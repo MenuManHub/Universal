@@ -51,7 +51,7 @@ local MiscTab = Window:CreateTab("Misc", 4483362458)
 -- PLAYER TAB
 -- =========================
 
-PlayerTab:CreateSection("Movement")
+PlayerTab:CreateSection("Basic Movement")
 
 -- Speed Slider
 local SpeedSlider = PlayerTab:CreateSlider({
@@ -128,10 +128,40 @@ local JumpToggle = PlayerTab:CreateToggle({
 })
 
 -- =========================
--- GAME TAB (EMPTY)
+-- INFINITE JUMP
 -- =========================
-GameTab:CreateSection("Coming Soon")
 
+local InfiniteJumpEnabled = false
+local UIS = game:GetService("UserInputService")
+
+PlayerTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJumpToggle",
+    Callback = function(Value)
+        InfiniteJumpEnabled = Value
+    end,
+})
+
+UIS.JumpRequest:Connect(function()
+    if not InfiniteJumpEnabled then return end
+
+    local character = LocalPlayer.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    -- Force jump even in air
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+end)
+
+
+
+
+
+
+PlayerTab:CreateSection("Teleportation")
 -- =========================
 -- CLICK TELEPORT (HOLD KEY + CLICK)
 -- =========================
@@ -152,7 +182,7 @@ local mouse = LocalPlayer:GetMouse()
 -- Keybind (changeable)
 local ClickTPKey = Enum.KeyCode.F
 
-GameTab:CreateKeybind({
+PlayerTab:CreateKeybind({
     Name = "Click TP Key",
     CurrentKeybind = "F",
     HoldToInteract = false,
@@ -165,7 +195,7 @@ GameTab:CreateKeybind({
 })
 
 -- Toggle
-GameTab:CreateToggle({
+PlayerTab:CreateToggle({
     Name = "Click Teleport",
     CurrentValue = false,
     Flag = "ClickTeleportToggle",
@@ -205,39 +235,99 @@ mouse.Button1Down:Connect(function()
     end
 end)
 
--- =========================
--- INFINITE JUMP
--- =========================
+PlayerTab:CreateSection("Bypasses")
 
-local InfiniteJumpEnabled = false
-local UIS = game:GetService("UserInputService")
+local NOCLIP_ENABLED = false
+local noclipConnection = nil
 
-GameTab:CreateToggle({
-    Name = "Infinite Jump",
+PlayerTab:CreateToggle({
+    Name = "NoClip",
     CurrentValue = false,
-    Flag = "InfiniteJumpToggle",
+    Flag = "NoClipToggle",
     Callback = function(Value)
-        InfiniteJumpEnabled = Value
+        NOCLIP_ENABLED = Value
+
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
+        end
+
+        if Value then
+            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end)
+        else
+            -- restore collisions
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
     end,
 })
 
-UIS.JumpRequest:Connect(function()
-    if not InfiniteJumpEnabled then return end
 
-    local character = LocalPlayer.Character
-    if not character then return end
+-- =========================
+-- GAME TAB
+-- =========================
+GameTab:CreateSection("World Modification")
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
 
-    -- Force jump even in air
-    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-end)
+local FULLBRIGHT_ENABLED = false
+
+-- store original lighting settings
+local Lighting = game:GetService("Lighting")
+
+local originalSettings = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    Ambient = Lighting.Ambient,
+    OutdoorAmbient = Lighting.OutdoorAmbient
+}
+
+GameTab:CreateToggle({
+    Name = "FullBright",
+    CurrentValue = false,
+    Flag = "FullBrightToggle",
+    Callback = function(Value)
+        FULLBRIGHT_ENABLED = Value
+
+        if Value then
+            -- apply fullbright
+            Lighting.Brightness = 3
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+            Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        else
+            -- restore original settings
+            Lighting.Brightness = originalSettings.Brightness
+            Lighting.ClockTime = originalSettings.ClockTime
+            Lighting.FogEnd = originalSettings.FogEnd
+            Lighting.Ambient = originalSettings.Ambient
+            Lighting.OutdoorAmbient = originalSettings.OutdoorAmbient
+        end
+    end,
+})
+
 
 
 -- =========================
 -- PVP TAB (REBUILT CLEAN)
 -- =========================
+PvPTab:CreateSection("ESP")
 
 local Players = game:GetService("Players")
 
